@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format } from 'date-fns';
 
-interface Customer { id: string; name: string; phone: string; email?: string; address?: string; aadharNumber?: string; createdAt: string; }
+interface Customer { id: string; name: string; phone: string; email?: string; address?: string; aadharNumber?: string; profileImage?: string; createdAt: string; }
 interface Loan { id: string; principalAmount: number; status: string; dueDate: string; interestRate: number; items: {description:string;weightGrams:number;purity:string;}[]; calculatedInterest: {outstandingBalance:number;interestAccrued:number;}; }
 
 export default function CustomerDetailPage() {
@@ -37,9 +37,13 @@ export default function CustomerDetailPage() {
       <div className="card" style={{ padding: 28, marginBottom: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg, #C9922A, #E8B84B)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'white', fontWeight: 700 }}>
-              {customer.name.charAt(0).toUpperCase()}
-            </div>
+            {customer.profileImage ? (
+              <img src={customer.profileImage} alt={customer.name} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid #E8C87A' }} />
+            ) : (
+              <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg, #C9922A, #E8B84B)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'white', fontWeight: 700 }}>
+                {customer.name.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 24, color: '#1A1A2E', marginBottom: 4 }}>{customer.name}</h1>
               <a href={`tel:${customer.phone}`} style={{ color: '#C9922A', fontSize: 15, fontWeight: 600, textDecoration: 'none' }}>{customer.phone}</a>

@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 interface Loan {
   id: string; customerName: string; customerPhone: string;
   principalAmount: number; status: string; dueDate: string;
+  items?: { description: string; weightGrams: number; purity: string; }[];
   calculatedInterest: { outstandingBalance: number; interestAccrued: number; monthlyInterestAmount: number; };
 }
 
@@ -29,6 +30,23 @@ export default function DashboardPage() {
   const overdueLoans = loans.filter(l => l.status === 'overdue' || (l.status === 'active' && new Date(l.dueDate) < new Date()));
   const totalOutstanding = activeLoans.reduce((s, l) => s + (l.calculatedInterest?.outstandingBalance || 0), 0);
   const totalPrincipal = activeLoans.reduce((s, l) => s + l.principalAmount, 0);
+
+  // Gold summary — active loans (including overdue) still hold the physical gold
+  const goldHeldLoans = loans.filter(l => l.status === 'active');
+  const goldHeldGrams = goldHeldLoans.reduce((s, l) => s + (l.items?.reduce((gs, it) => gs + (it.weightGrams || 0), 0) ?? 0), 0);
+
+  const PURITY_ORDER = ['24K', '22K', '18K', '14K', 'Silver'];
+  const byPurity: Record<string, number> = {};
+  goldHeldLoans.forEach(l => l.items?.forEach(it => {
+    if (it.purity) byPurity[it.purity] = (byPurity[it.purity] || 0) + (it.weightGrams || 0);
+  }));
+  const purityBreakdown = Object.entries(byPurity).sort(([a], [b]) => {
+    const ai = PURITY_ORDER.indexOf(a), bi = PURITY_ORDER.indexOf(b);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    return a.localeCompare(b);
+  });
 
   const fmt = (n: number) => '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 });
 
@@ -61,6 +79,42 @@ export default function DashboardPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Gold in Vault */}
+      <div className="card" style={{ padding: 24, marginBottom: 24, background: 'linear-gradient(135deg, #FDFAF4 0%, #FDF6E3 100%)', border: '1px solid #E8C87A' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span style={{ fontSize: 20 }}>🪙</span>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1A1A2E' }}>Gold in Vault</h2>
+              <span style={{ fontSize: 11, color: '#5A5A7A', background: '#F0E8D0', padding: '2px 9px', borderRadius: 20, fontWeight: 600 }}>Active loans</span>
+            </div>
+            {goldHeldGrams === 0 ? (
+              <p style={{ color: '#5A5A7A', fontSize: 14, margin: 0 }}>No gold currently held — all loans are closed.</p>
+            ) : (
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+                {purityBreakdown.map(([purity, grams]) => (
+                  <div key={purity} style={{ padding: '8px 16px', background: 'white', border: '1.5px solid #E8C87A', borderRadius: 8, minWidth: 80, textAlign: 'center' }}>
+                    <div style={{ fontSize: 11, color: '#5A5A7A', fontWeight: 600, marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{purity}</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: '#C9922A', fontFamily: 'Playfair Display, serif' }}>{grams.toFixed(1)}<span style={{ fontSize: 12, fontWeight: 600, marginLeft: 2 }}>g</span></div>
+                  </div>
+                ))}
+                {purityBreakdown.length === 0 && goldHeldGrams > 0 && (
+                  <div style={{ fontSize: 14, color: '#5A5A7A' }}>Items have no purity data yet.</div>
+                )}
+              </div>
+            )}
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 11, color: '#5A5A7A', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>Total Held</div>
+            <div style={{ fontSize: 36, fontWeight: 800, color: '#C9922A', fontFamily: 'Playfair Display, serif', lineHeight: 1 }}>
+              {goldHeldGrams.toFixed(1)}
+              <span style={{ fontSize: 16, fontWeight: 600, marginLeft: 4 }}>g</span>
+            </div>
+            <div style={{ fontSize: 12, color: '#5A5A7A', marginTop: 4 }}>{goldHeldLoans.length} active loan{goldHeldLoans.length !== 1 ? 's' : ''}</div>
+          </div>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>

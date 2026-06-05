@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRedis, keys } from '@/lib/redis';
 import { getAuthShopId } from '@/lib/auth';
 import { Loan } from '@/types';
-import { calculateInterest } from '@/lib/interest';
+import { calculateLoanInterest } from '@/lib/interest';
 import { v4 as uuidv4 } from 'uuid';
 
 function parseLoan(data: string | unknown): Loan {
@@ -20,7 +20,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 
   const loan = parseLoan(data);
   if (loan.shopId !== shopId) return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-  return NextResponse.json({ ...loan, calculatedInterest: calculateInterest(loan) });
+  return NextResponse.json({ ...loan, calculatedInterest: calculateLoanInterest(loan) });
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -38,7 +38,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const body = await req.json();
   const updated = { ...loan, ...body, id, shopId };
   await redis.set(keys.loan(id), JSON.stringify(updated));
-  return NextResponse.json({ ...updated, calculatedInterest: calculateInterest(updated) });
+  return NextResponse.json({ ...updated, calculatedInterest: calculateLoanInterest(updated) });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -64,7 +64,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   };
 
   const newTotalPaid = loan.totalPaid + payment.amount;
-  const interest = calculateInterest({ ...loan, totalPaid: newTotalPaid });
+  const interest = calculateLoanInterest({ ...loan, totalPaid: newTotalPaid });
   const newStatus: Loan['status'] = newTotalPaid >= interest.totalDue ? 'closed' : loan.status;
 
   const updatedLoan: Loan = {
@@ -73,5 +73,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   };
 
   await redis.set(keys.loan(id), JSON.stringify(updatedLoan));
-  return NextResponse.json({ ...updatedLoan, calculatedInterest: calculateInterest(updatedLoan), payment });
+  return NextResponse.json({ ...updatedLoan, calculatedInterest: calculateLoanInterest(updatedLoan), payment });
 }

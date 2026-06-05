@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   if (!shopId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const { name, phone, email, address, aadharNumber } = body;
+  const { name, phone, email, address, aadharNumber, profileImage } = body;
 
   if (!name || !phone) {
     return NextResponse.json({ error: 'Name and phone required' }, { status: 400 });
@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
   const redis = getRedis();
   const customer: Customer = {
     id: uuidv4(), shopId, name, phone, email, address, aadharNumber,
+    ...(profileImage ? { profileImage } : {}),
     createdAt: new Date().toISOString(),
   };
 

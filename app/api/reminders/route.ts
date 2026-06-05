@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getRedis, keys } from '@/lib/redis';
 import { getAuthShopId } from '@/lib/auth';
 import { Loan, Shop } from '@/types';
-import { calculateInterest, isOverdue, isPaymentDueSoon } from '@/lib/interest';
+import { calculateLoanInterest, isOverdue, isPaymentDueSoon } from '@/lib/interest';
 import { sendWhatsAppMessage, buildReminderMessage } from '@/lib/whatsapp';
 import { v4 as uuidv4 } from 'uuid';
 import { format } from 'date-fns';
@@ -25,7 +25,7 @@ export async function GET() {
     if (data) {
       const loan = parse<Loan>(data);
       if (loan.status !== 'active') continue;
-      const calc = calculateInterest(loan);
+      const calc = calculateLoanInterest(loan);
       if (isOverdue(loan)) overdue.push({ ...loan, calculatedInterest: calc });
       else if (isPaymentDueSoon(loan, 7)) dueSoon.push({ ...loan, calculatedInterest: calc });
     }
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     const loan = parse<Loan>(data);
     if (loan.shopId !== shopId) continue;
 
-    const calc = calculateInterest(loan);
+    const calc = calculateLoanInterest(loan);
     const message = buildReminderMessage({
       customerName: loan.customerName, shopName: shop.name,
       outstandingBalance: calc.outstandingBalance,

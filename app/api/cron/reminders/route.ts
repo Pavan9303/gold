@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRedis, keys } from '@/lib/redis';
 import { Loan, Shop } from '@/types';
-import { calculateInterest, isOverdue, isPaymentDueSoon } from '@/lib/interest';
+import { calculateLoanInterest, isOverdue, isPaymentDueSoon } from '@/lib/interest';
 import { sendWhatsAppMessage, buildReminderMessage } from '@/lib/whatsapp';
 import { format } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const shop = parse<Shop>(shopData);
     if (!shop.whatsappEnabled || !shop.whatsappToken || !shop.whatsappPhoneId) continue;
 
-    const calc = calculateInterest(loan);
+    const calc = calculateLoanInterest(loan);
     const message = buildReminderMessage({
       customerName: loan.customerName, shopName: shop.name,
       outstandingBalance: calc.outstandingBalance,

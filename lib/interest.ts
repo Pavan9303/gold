@@ -28,6 +28,39 @@ export function calculateInterest(loan: Loan, asOfDate: Date = new Date()) {
   };
 }
 
+export function calculateSimpleInterest(loan: Loan, asOfDate: Date = new Date()) {
+  const start = parseISO(loan.startDate);
+  const monthsElapsed = Math.max(0, differenceInMonths(asOfDate, start));
+  const daysElapsed = differenceInDays(asOfDate, start);
+
+  const monthlyRate = loan.interestRate / 100;
+  const interestAccrued = loan.principalAmount * monthlyRate * monthsElapsed;
+  const totalDue = loan.principalAmount + interestAccrued;
+  const outstandingBalance = Math.max(0, totalDue - loan.totalPaid);
+  const paidAbovePrincipal = loan.totalPaid > loan.principalAmount ? loan.totalPaid - loan.principalAmount : 0;
+  const interestDue = Math.max(0, interestAccrued - paidAbovePrincipal);
+
+  return {
+    principalAmount: loan.principalAmount,
+    interestAccrued: Math.round(interestAccrued * 100) / 100,
+    totalDue: Math.round(totalDue * 100) / 100,
+    totalPaid: loan.totalPaid,
+    outstandingBalance: Math.round(outstandingBalance * 100) / 100,
+    monthsElapsed,
+    daysElapsed,
+    interestDue: Math.round(interestDue * 100) / 100,
+    monthlyInterestAmount: Math.round(loan.principalAmount * monthlyRate * 100) / 100,
+  };
+}
+
+// Selects the right formula based on loan.isCompoundInterest.
+// undefined → compound (preserves behaviour for loans created before this toggle existed).
+export function calculateLoanInterest(loan: Loan, asOfDate?: Date) {
+  return loan.isCompoundInterest === false
+    ? calculateSimpleInterest(loan, asOfDate)
+    : calculateInterest(loan, asOfDate);
+}
+
 export function isPaymentDueSoon(loan: Loan, daysThreshold = 3): boolean {
   const due = parseISO(loan.dueDate);
   const today = new Date();

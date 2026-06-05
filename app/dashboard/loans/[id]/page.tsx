@@ -6,7 +6,8 @@ import { format } from 'date-fns';
 
 interface CalcInterest { principalAmount: number; interestAccrued: number; totalDue: number; totalPaid: number; outstandingBalance: number; monthsElapsed: number; interestDue: number; monthlyInterestAmount: number; }
 interface Payment { id: string; amount: number; date: string; note?: string; type: string; }
-interface Loan { id: string; customerId: string; customerName: string; customerPhone: string; principalAmount: number; interestRate: number; startDate: string; dueDate: string; status: string; totalPaid: number; payments: Payment[]; items: {description:string;weightGrams:number;purity:string;estimatedValue:number;}[]; notes?: string; calculatedInterest: CalcInterest; }
+const PRESET_LABELS: Record<string, string> = { '1d':'1 Day','3d':'3 Days','7d':'7 Days','1m':'1 Month','3m':'3 Months','6m':'6 Months','12m':'12 Months','custom':'Custom' };
+interface Loan { id: string; customerId: string; customerName: string; customerPhone: string; principalAmount: number; interestRate: number; startDate: string; dueDate: string; durationPreset?: string; isCompoundInterest?: boolean; status: string; totalPaid: number; payments: Payment[]; items: {description:string;weightGrams:number;purity:string;purityPercentage?:number;estimatedValue:number;itemImage?:string;}[]; notes?: string; calculatedInterest: CalcInterest; }
 
 export default function LoanDetailPage() {
   const { id } = useParams() as { id: string };
@@ -93,6 +94,7 @@ export default function LoanDetailPage() {
             {[
               { label: 'Start Date', value: format(new Date(loan.startDate), 'dd MMMM yyyy') },
               { label: 'Due Date', value: format(new Date(loan.dueDate), 'dd MMMM yyyy') },
+              ...(loan.durationPreset ? [{ label: 'Duration', value: PRESET_LABELS[loan.durationPreset] ?? loan.durationPreset }] : []),
               { label: 'Interest Rate', value: `${loan.interestRate}% per month` },
               { label: 'Months Elapsed', value: `${ci.monthsElapsed} months` },
               ...(loan.notes ? [{ label: 'Notes', value: loan.notes }] : []),
@@ -110,18 +112,74 @@ export default function LoanDetailPage() {
           <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: '#1A1A2E' }}>🪙 Gold Items Held</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {loan.items?.map((item, i) => (
-              <div key={i} style={{ padding: 12, background: '#FDF6E3', borderRadius: 8, border: '1px solid #E8C87A' }}>
-                <div style={{ fontWeight: 600, color: '#1A1A2E', marginBottom: 4 }}>{item.description}</div>
-                <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#5A5A7A' }}>
-                  <span>⚖️ {item.weightGrams}g</span>
-                  <span>✨ {item.purity}</span>
-                  {item.estimatedValue > 0 && <span>💰 Est. {fmt(item.estimatedValue)}</span>}
+              <div key={i} style={{ padding: 12, background: '#FDF6E3', borderRadius: 8, border: '1px solid #E8C87A', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                {item.itemImage && (
+                  <a href={item.itemImage} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
+                    <img src={item.itemImage} alt={item.description} style={{ width: 56, height: 56, borderRadius: 6, objectFit: 'cover', border: '1.5px solid #E8C87A', display: 'block' }} />
+                  </a>
+                )}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, color: '#1A1A2E', marginBottom: 4 }}>{item.description}</div>
+                  <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#5A5A7A', flexWrap: 'wrap' }}>
+                    <span>⚖️ {item.weightGrams}g</span>
+                    <span>✨ {item.purity}{item.purityPercentage != null ? ` (${item.purityPercentage}%)` : ''}</span>
+                    {item.estimatedValue > 0 && <span>💰 Est. {fmt(item.estimatedValue)}</span>}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {/* Interest Calculation Breakdown */}
+      {loan.isCompoundInterest !== undefined && (
+        <div className="card" style={{ padding: 20, marginBottom: 20, background: loan.isCompoundInterest ? '#FDFAF4' : '#F8F8FC', border: `1px solid ${loan.isCompoundInterest ? '#E8C87A' : '#E0E0EE'}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <span style={{ fontSize: 15 }}>{loan.isCompoundInterest ? '📈' : '📊'}</span>
+            <h2 style={{ fontSize: 14, fontWeight: 700, color: '#1A1A2E' }}>
+              {loan.isCompoundInterest ? 'Compound Interest (Monthly)' : 'Simple Interest'}
+            </h2>
+            <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 20, fontWeight: 600, background: loan.isCompoundInterest ? '#FDF6E3' : '#EDEDF8', color: loan.isCompoundInterest ? '#C9922A' : '#5A5A7A', marginLeft: 'auto' }}>
+              {loan.isCompoundInterest ? 'Compound' : 'Simple'}
+            </span>
+          </div>
+          {loan.isCompoundInterest ? (
+            <div style={{ fontFamily: 'monospace', fontSize: 13, color: '#3A3A5A', lineHeight: 2 }}>
+              <div>Total = P × (1 + r)<sup>n</sup></div>
+              <div style={{ color: '#5A5A7A' }}>
+                {'= ₹'}
+                {loan.principalAmount.toLocaleString('en-IN')}
+                {' × (1 + '}
+                {(loan.interestRate / 100).toFixed(4)}
+                {')'}
+                <sup>{ci.monthsElapsed}</sup>
+              </div>
+              <div style={{ fontWeight: 700, color: '#C9922A' }}>
+                = ₹{ci.totalDue.toLocaleString('en-IN', { maximumFractionDigits: 2 })} total
+                &nbsp;(₹{ci.interestAccrued.toLocaleString('en-IN', { maximumFractionDigits: 2 })} interest)
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontFamily: 'monospace', fontSize: 13, color: '#3A3A5A', lineHeight: 2 }}>
+              <div>Interest = P × r × n</div>
+              <div style={{ color: '#5A5A7A' }}>
+                {'= ₹'}
+                {loan.principalAmount.toLocaleString('en-IN')}
+                {' × '}
+                {loan.interestRate}
+                {'% × '}
+                {ci.monthsElapsed}
+                {' months'}
+              </div>
+              <div style={{ fontWeight: 700, color: '#5A5A7A' }}>
+                = ₹{ci.interestAccrued.toLocaleString('en-IN', { maximumFractionDigits: 2 })} interest
+                &nbsp;(₹{ci.totalDue.toLocaleString('en-IN', { maximumFractionDigits: 2 })} total)
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Payment History */}
       <div className="card" style={{ padding: 24 }}>

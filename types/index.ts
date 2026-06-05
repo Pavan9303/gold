@@ -21,6 +21,7 @@ export interface Customer {
   email?: string;
   address?: string;
   aadharNumber?: string;
+  profileImage?: string;
   createdAt: string;
 }
 
@@ -28,7 +29,9 @@ export interface LoanItem {
   description: string;
   weightGrams: number;
   purity: string; // 22K, 24K, 18K, etc.
+  purityPercentage?: number; // e.g. 91.6 for 22K
   estimatedValue: number;
+  itemImage?: string;
 }
 
 export interface Loan {
@@ -42,6 +45,8 @@ export interface Loan {
   interestRate: number; // monthly %
   startDate: string;
   dueDate: string;
+  durationPreset?: string; // '1d'|'3d'|'7d'|'1m'|'3m'|'6m'|'12m'|'custom'
+  isCompoundInterest?: boolean; // undefined = compound (legacy), false = simple, true = compound
   status: 'active' | 'closed' | 'overdue';
   totalPaid: number;
   payments: Payment[];
